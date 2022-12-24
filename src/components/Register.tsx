@@ -5,6 +5,7 @@ import ThemeContext from "../contexts/Theme";
 import UserContext from "../contexts/User";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import mainApi from '../API/Main'
 
 // icons
 import {BsFillMoonFill, BsPerson} from 'react-icons/bs';
@@ -14,6 +15,8 @@ import {VscGistSecret} from 'react-icons/vsc'
 import {MdAlternateEmail} from 'react-icons/md'
 import {FaUserAstronaut} from 'react-icons/fa'
 import {AiOutlineLoading3Quarters} from 'react-icons/ai'
+import useInput from "../hooks/useInput";
+import useSelect from "../hooks/useSelect";
 
 const StyledRegister = styled.div`
     width:100%;
@@ -188,16 +191,16 @@ const StyledRegister = styled.div`
 
 const Register = () => {
     const navigate = useNavigate();
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [role, setRole] = useState('user');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [success, setSucess] = useState(false);
-    const [secret, setSecret] = useState('');
     const {theme, setTheme} = useContext(ThemeContext)
     const {user} = useContext(UserContext);
+    const nameBind = useInput('');
+    const emailBind = useInput('');
+    const passwordBind = useInput('');
+    const roleBind = useSelect('user');
+    const secretBind = useInput('');
     useEffect(() => {
         if(user) navigate('/');
     }, [user, navigate])
@@ -206,33 +209,34 @@ const Register = () => {
         setTheme(theme === 'light' ? 'dark' : 'light');
     }
 
-    const handleEmailChange = (e : React.ChangeEvent<HTMLInputElement> ) => {
-        setEmail(e.target.value);
-    }
-
-    const handleNameChange = (e : React.ChangeEvent<HTMLInputElement>) => {
-        setName(e.target.value);
-    }
-
-    const handlePasswordChange = (e : React.ChangeEvent<HTMLInputElement>) => {
-        setPassword(e.target.value);
-    }
-
-    const handleRoleChange = (e : React.ChangeEvent<HTMLSelectElement>) => {
-        setRole(e.target.value);
-    }
-
-    const handleSecretChange = (e : React.ChangeEvent<HTMLInputElement>) => {
-        setSecret(e.target.value);
-    }
-
-    const handleSubmit = (e){
+    const handleSubmit = async (e : React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        
+        setLoading(true);
+        console.log(nameBind.value, emailBind.value, passwordBind.value, roleBind.value, secretBind.value);
+        try{
+            await mainApi.post('/api/auth/register', {
+                name: nameBind.value,
+                email: emailBind.value,
+                password: passwordBind.value,
+                role: roleBind.value,
+                secret: secretBind.value
+            });
+            setLoading(false);
+            setSucess(true);
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000)
+        }catch(err : any){
+            setLoading(false);
+            setError(err.response.data.error);
+            setTimeout(() => {
+                setError('');
+            }, 2000)
+        }
     }
 
     return (
-        <StyledRegister theme={theme}>
+        <StyledRegister theme={theme} >
             <button id="theme" onClick = {handleTheme}>{ theme === 'light' ? <BsFillMoonFill className='icon'/> : <BsFillSunFill className='icon'/>}</button>
             <h1 className="title">Register</h1>
             <form className="form" onSubmit={handleSubmit}>
@@ -241,39 +245,39 @@ const Register = () => {
                         <BsPerson className="icon"/>
                         <label htmlFor="name">Name</label>
                     </div>
-                    <input type="text" id="name" value={name} onChange={ handleNameChange } />
+                    <input type="text" id="name" {...nameBind} required />
                 </div>
                 <div className="form-control"> 
                     <div className="label">
                         <MdAlternateEmail className='icon'/>
                         <label htmlFor="email">Email</label>
                     </div>
-                    <input type="email" id="email" value={email} onChange={ handleEmailChange } />
+                    <input type="email" id="email" { ...emailBind } required />
                 </div>
                 <div className="form-control">
                     <div className="label">
                         <RiLockPasswordLine className='icon'/>
                         <label htmlFor="password">Password</label>
                     </div>
-                    <input type="password" id="password" value={password} onChange={ handlePasswordChange } />
+                    <input type="password" id="password" {...passwordBind} required/>
                 </div>
                 <div className="form-control">
                     <div className="label">
                         <FaUserAstronaut className='icon'/>
                         <label htmlFor="role">Role</label>
                     </div>
-                    <select id="role" value={role} onChange={ handleRoleChange }>
+                    <select id="role" {...roleBind} >
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                {role==='admin' && 
+                {roleBind.value ==='admin' && 
                     <div className="form-control">
                         <div className="label">
                             <VscGistSecret className='icon'/>
                             <label htmlFor="secret">Admin secret</label>
                         </div>
-                        <input type="password" id="secret" value={secret} onChange={handleSecretChange} />
+                        <input type="password" id="secret" {...secretBind} required />
                     </div>
                 }
                 <button type="submit" disabled={loading}> <RiSendPlaneFill className='icon'/>Register</button>
@@ -287,8 +291,6 @@ const Register = () => {
                 {error && <div id="error">{error}</div>}
                 {success && <div id="success">You are succesfully registered!</div>}
             </div>
-            
-            
         </StyledRegister>
     )
 }
